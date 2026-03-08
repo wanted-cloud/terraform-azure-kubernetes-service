@@ -25,7 +25,7 @@ The following requirements are needed by this module:
 
 The following providers are used by this module:
 
-- <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) (>=4.20.0)
+- <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) (4.63.0)
 
 ## Required Inputs
 
@@ -39,13 +39,12 @@ Type:
 
 ```hcl
 object({
-    name       = string
-    node_count = number
-    vm_size    = string
-    subnet_id  = optional(string, null)
-    tags       = optional(map(string), {})
-    os_sku     = optional(string, "AzureLinux")
-    zones      = optional(list(number), [])
+    name      = string
+    vm_size   = string
+    subnet_id = optional(string, null)
+    tags      = optional(map(string), {})
+    os_sku    = optional(string, "AzureLinux")
+    zones     = optional(list(number), [])
 
     // Auto-scaling flag
     auto_scaling_enabled = optional(bool, false)
@@ -53,18 +52,86 @@ object({
     max_count  = optional(number, null)
     min_count  = optional(number, null)
     node_count = optional(number, null)
+
+    max_pods                     = optional(number, null)
+    node_labels                  = optional(map(string), null)
+    only_critical_addons_enabled = optional(bool, null)
+    orchestrator_version         = optional(string, null)
+    os_disk_size_gb              = optional(number, null)
+    os_disk_type                 = optional(string, null)
+    type                         = optional(string, null)
+    scale_down_mode              = optional(string, null)
+    pod_subnet_id                = optional(string, null)
+    node_public_ip_enabled       = optional(bool, null)
+    temporary_name_for_rotation  = optional(string, null)
+
+    upgrade_settings = optional(object({
+      drain_timeout_in_minutes      = optional(number, null)
+      node_soak_duration_in_minutes = optional(number, null)
+      max_surge                     = optional(string, "10%")
+    }), null)
+
+    kubelet_config = optional(object({
+      cpu_manager_policy        = optional(string, null)
+      cpu_cfs_quota_enabled     = optional(bool, null)
+      cpu_cfs_quota_period      = optional(string, null)
+      image_gc_high_threshold   = optional(number, null)
+      image_gc_low_threshold    = optional(number, null)
+      topology_manager_policy   = optional(string, null)
+      allowed_unsafe_sysctls    = optional(list(string), null)
+      container_log_max_size_mb = optional(number, null)
+      container_log_max_line    = optional(number, null)
+      pod_max_pid               = optional(number, null)
+    }), null)
+
+    linux_os_config = optional(object({
+      swap_file_size_mb             = optional(number, null)
+      transparent_huge_page_enabled = optional(string, null)
+      transparent_huge_page_defrag  = optional(string, null)
+      sysctl_config = optional(object({
+        fs_aio_max_nr                      = optional(number, null)
+        fs_file_max                        = optional(number, null)
+        fs_inotify_max_user_watches        = optional(number, null)
+        fs_nr_open                         = optional(number, null)
+        kernel_threads_max                 = optional(number, null)
+        net_core_netdev_max_backlog        = optional(number, null)
+        net_core_optmem_max                = optional(number, null)
+        net_core_rmem_default              = optional(number, null)
+        net_core_rmem_max                  = optional(number, null)
+        net_core_somaxconn                 = optional(number, null)
+        net_core_wmem_default              = optional(number, null)
+        net_core_wmem_max                  = optional(number, null)
+        net_ipv4_ip_local_port_range_max   = optional(number, null)
+        net_ipv4_ip_local_port_range_min   = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh1  = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh2  = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh3  = optional(number, null)
+        net_ipv4_tcp_fin_timeout           = optional(number, null)
+        net_ipv4_tcp_keepalive_intvl       = optional(number, null)
+        net_ipv4_tcp_keepalive_probes      = optional(number, null)
+        net_ipv4_tcp_keepalive_time        = optional(number, null)
+        net_ipv4_tcp_max_syn_backlog       = optional(number, null)
+        net_ipv4_tcp_max_tw_buckets        = optional(number, null)
+        net_ipv4_tcp_tw_reuse              = optional(bool, null)
+        net_netfilter_nf_conntrack_buckets = optional(number, null)
+        net_netfilter_nf_conntrack_max     = optional(number, null)
+        vm_max_map_count                   = optional(number, null)
+        vm_swappiness                      = optional(number, null)
+        vm_vfs_cache_pressure              = optional(number, null)
+      }), null)
+    }), null)
   })
 ```
 
 ### <a name="input_name"></a> [name](#input\_name)
 
-Description: Name of the AI Service resource.
+Description: Name of the AKS cluster resource.
 
 Type: `string`
 
 ### <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name)
 
-Description: Name of the resource group in which the AI Service will be created.
+Description: Name of the resource group in which the AKS cluster will be created.
 
 Type: `string`
 
@@ -80,15 +147,14 @@ Type:
 
 ```hcl
 list(object({
-    name       = string
-    node_count = number
-    vm_size    = string
-    subnet_id  = optional(string, null)
-    tags       = optional(map(string), {})
-    os_type    = optional(string, "Linux")
-    os_sku     = optional(string, "AzureLinux")
-    priority   = optional(string, "Regular")
-    zones      = optional(list(number), [])
+    name      = string
+    vm_size   = string
+    subnet_id = optional(string, null)
+    tags      = optional(map(string), {})
+    os_type   = optional(string, "Linux")
+    os_sku    = optional(string, "AzureLinux")
+    priority  = optional(string, "Regular")
+    zones     = optional(list(number), [])
 
     // Auto-scaling flag
     auto_scaling_enabled = optional(bool, false)
@@ -96,34 +162,329 @@ list(object({
     max_count  = optional(number, null)
     min_count  = optional(number, null)
     node_count = optional(number, null)
+
+    node_labels          = optional(map(string), null)
+    node_taints          = optional(list(string), null)
+    max_pods             = optional(number, null)
+    orchestrator_version = optional(string, null)
+    os_disk_size_gb      = optional(number, null)
+    os_disk_type         = optional(string, null)
+    mode                 = optional(string, "User")
+    scale_down_mode      = optional(string, null)
+    eviction_policy      = optional(string, null)
+    spot_max_price       = optional(number, null)
+    pod_subnet_id        = optional(string, null)
+
+    node_public_ip_enabled      = optional(bool, null)
+    host_encryption_enabled     = optional(bool, null)
+    fips_enabled                = optional(bool, null)
+    temporary_name_for_rotation = optional(string, null)
+
+    upgrade_settings = optional(object({
+      drain_timeout_in_minutes      = optional(number, null)
+      node_soak_duration_in_minutes = optional(number, null)
+      max_surge                     = optional(string, "10%")
+    }), null)
+
+    kubelet_config = optional(object({
+      cpu_manager_policy        = optional(string, null)
+      cpu_cfs_quota_enabled     = optional(bool, null)
+      cpu_cfs_quota_period      = optional(string, null)
+      image_gc_high_threshold   = optional(number, null)
+      image_gc_low_threshold    = optional(number, null)
+      topology_manager_policy   = optional(string, null)
+      allowed_unsafe_sysctls    = optional(list(string), null)
+      container_log_max_size_mb = optional(number, null)
+      container_log_max_line    = optional(number, null)
+      pod_max_pid               = optional(number, null)
+    }), null)
+
+    linux_os_config = optional(object({
+      swap_file_size_mb             = optional(number, null)
+      transparent_huge_page_enabled = optional(string, null)
+      transparent_huge_page_defrag  = optional(string, null)
+      sysctl_config = optional(object({
+        fs_aio_max_nr                      = optional(number, null)
+        fs_file_max                        = optional(number, null)
+        fs_inotify_max_user_watches        = optional(number, null)
+        fs_nr_open                         = optional(number, null)
+        kernel_threads_max                 = optional(number, null)
+        net_core_netdev_max_backlog        = optional(number, null)
+        net_core_optmem_max                = optional(number, null)
+        net_core_rmem_default              = optional(number, null)
+        net_core_rmem_max                  = optional(number, null)
+        net_core_somaxconn                 = optional(number, null)
+        net_core_wmem_default              = optional(number, null)
+        net_core_wmem_max                  = optional(number, null)
+        net_ipv4_ip_local_port_range_max   = optional(number, null)
+        net_ipv4_ip_local_port_range_min   = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh1  = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh2  = optional(number, null)
+        net_ipv4_neigh_default_gc_thresh3  = optional(number, null)
+        net_ipv4_tcp_fin_timeout           = optional(number, null)
+        net_ipv4_tcp_keepalive_intvl       = optional(number, null)
+        net_ipv4_tcp_keepalive_probes      = optional(number, null)
+        net_ipv4_tcp_keepalive_time        = optional(number, null)
+        net_ipv4_tcp_max_syn_backlog       = optional(number, null)
+        net_ipv4_tcp_max_tw_buckets        = optional(number, null)
+        net_ipv4_tcp_tw_reuse              = optional(bool, null)
+        net_netfilter_nf_conntrack_buckets = optional(number, null)
+        net_netfilter_nf_conntrack_max     = optional(number, null)
+        vm_max_map_count                   = optional(number, null)
+        vm_swappiness                      = optional(number, null)
+        vm_vfs_cache_pressure              = optional(number, null)
+      }), null)
+    }), null)
+
+    node_network_profile = optional(object({
+      allowed_host_ports = optional(list(object({
+        port_start = optional(number, null)
+        port_end   = optional(number, null)
+        protocol   = optional(string, null)
+      })), [])
+      application_security_group_ids = optional(list(string), [])
+      node_public_ip_tags            = optional(map(string), {})
+    }), null)
+
+    windows_profile = optional(object({
+      outbound_nat_enabled = optional(bool, true)
+    }), null)
   }))
 ```
 
 Default: `[]`
 
-### <a name="input_dns_prefix"></a> [dns\_prefix](#input\_dns\_prefix)
+### <a name="input_api_server_access_profile"></a> [api\_server\_access\_profile](#input\_api\_server\_access\_profile)
 
-Description: DNS prefix for the Azure Kubernetes Service.
+Description: API server access profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    authorized_ip_ranges                = optional(list(string), null)
+    subnet_id                           = optional(string, null)
+    virtual_network_integration_enabled = optional(bool, false)
+  })
+```
+
+Default: `null`
+
+### <a name="input_auto_scaler_profile"></a> [auto\_scaler\_profile](#input\_auto\_scaler\_profile)
+
+Description: Auto scaler profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    balance_similar_node_groups      = optional(bool, false)
+    expander                         = optional(string, "random")
+    max_graceful_termination_sec     = optional(number, 600)
+    max_node_provisioning_time       = optional(string, "15m")
+    max_unready_nodes                = optional(number, 3)
+    max_unready_percentage           = optional(number, 45)
+    new_pod_scale_up_delay           = optional(string, "10s")
+    scale_down_delay_after_add       = optional(string, "10m")
+    scale_down_delay_after_delete    = optional(string, "10s")
+    scale_down_delay_after_failure   = optional(string, "3m")
+    scan_interval                    = optional(string, "10s")
+    scale_down_unneeded              = optional(string, "10m")
+    scale_down_unready               = optional(string, "20m")
+    scale_down_utilization_threshold = optional(number, 0.5)
+    empty_bulk_delete_max            = optional(number, 10)
+    skip_nodes_with_local_storage    = optional(bool, true)
+    skip_nodes_with_system_pods      = optional(bool, true)
+  })
+```
+
+Default: `null`
+
+### <a name="input_automatic_upgrade_channel"></a> [automatic\_upgrade\_channel](#input\_automatic\_upgrade\_channel)
+
+Description: Automatic upgrade channel for the AKS cluster. Possible values are patch, rapid, node-image, stable, or none.
 
 Type: `string`
 
-Default: `""`
+Default: `null`
+
+### <a name="input_azure_active_directory_role_based_access_control"></a> [azure\_active\_directory\_role\_based\_access\_control](#input\_azure\_active\_directory\_role\_based\_access\_control)
+
+Description: Azure Active Directory role-based access control configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    tenant_id              = optional(string, null)
+    admin_group_object_ids = optional(list(string), [])
+    azure_rbac_enabled     = optional(bool, false)
+  })
+```
+
+Default: `null`
+
+### <a name="input_dns_prefix"></a> [dns\_prefix](#input\_dns\_prefix)
+
+Description: DNS prefix for the Azure Kubernetes Service. If not set it will be derived from the cluster name.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_http_proxy_config"></a> [http\_proxy\_config](#input\_http\_proxy\_config)
+
+Description: HTTP proxy configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    http_proxy  = optional(string, null)
+    https_proxy = optional(string, null)
+    no_proxy    = optional(list(string), [])
+    trusted_ca  = optional(string, null)
+  })
+```
+
+Default: `null`
 
 ### <a name="input_identity_type"></a> [identity\_type](#input\_identity\_type)
 
-Description: Type of identity to use for the Azure service plan.
+Description: Type of identity to use for the AKS cluster.
 
 Type: `string`
 
 Default: `"SystemAssigned"`
 
-### <a name="input_location"></a> [location](#input\_location)
+### <a name="input_key_vault_secrets_provider"></a> [key\_vault\_secrets\_provider](#input\_key\_vault\_secrets\_provider)
 
-Description: Location of the resource group in which the AI Service will be created, if not set it will be the same as the resource group.
+Description: Key Vault secrets provider configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    secret_rotation_enabled  = optional(bool, false)
+    secret_rotation_interval = optional(string, "2m")
+  })
+```
+
+Default: `null`
+
+### <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version)
+
+Description: Kubernetes version to use for the AKS cluster. If not set the latest available version will be used.
 
 Type: `string`
 
-Default: `""`
+Default: `null`
+
+### <a name="input_linux_profile"></a> [linux\_profile](#input\_linux\_profile)
+
+Description: Linux profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    admin_username = string
+    ssh_key = object({
+      key_data = string
+    })
+  })
+```
+
+Default: `null`
+
+### <a name="input_local_account_disabled"></a> [local\_account\_disabled](#input\_local\_account\_disabled)
+
+Description: Whether to disable local accounts on the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_location"></a> [location](#input\_location)
+
+Description: Location in which the AKS cluster will be created. If not set it will be the same as the resource group.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_maintenance_window"></a> [maintenance\_window](#input\_maintenance\_window)
+
+Description: Maintenance window configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    allowed = optional(list(object({
+      day   = string
+      hours = list(number)
+    })), [])
+    not_allowed = optional(list(object({
+      start = string
+      end   = string
+    })), [])
+  })
+```
+
+Default: `null`
+
+### <a name="input_maintenance_window_auto_upgrade"></a> [maintenance\_window\_auto\_upgrade](#input\_maintenance\_window\_auto\_upgrade)
+
+Description: Maintenance window auto upgrade configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    frequency    = string
+    interval     = number
+    duration     = number
+    day_of_week  = optional(string, null)
+    day_of_month = optional(number, null)
+    week_index   = optional(string, null)
+    start_time   = optional(string, null)
+    utc_offset   = optional(string, "+00:00")
+    start_date   = optional(string, null)
+    not_allowed = optional(list(object({
+      start = string
+      end   = string
+    })), [])
+  })
+```
+
+Default: `null`
+
+### <a name="input_maintenance_window_node_os"></a> [maintenance\_window\_node\_os](#input\_maintenance\_window\_node\_os)
+
+Description: Maintenance window node OS configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    frequency    = string
+    interval     = number
+    duration     = number
+    day_of_week  = optional(string, null)
+    day_of_month = optional(number, null)
+    week_index   = optional(string, null)
+    start_time   = optional(string, null)
+    utc_offset   = optional(string, "+00:00")
+    start_date   = optional(string, null)
+    not_allowed = optional(list(object({
+      start = string
+      end   = string
+    })), [])
+  })
+```
+
+Default: `null`
 
 ### <a name="input_metadata"></a> [metadata](#input\_metadata)
 
@@ -151,6 +512,81 @@ object({
 
 Default: `{}`
 
+### <a name="input_microsoft_defender"></a> [microsoft\_defender](#input\_microsoft\_defender)
+
+Description: Microsoft Defender configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    log_analytics_workspace_id = string
+  })
+```
+
+Default: `null`
+
+### <a name="input_network_profile"></a> [network\_profile](#input\_network\_profile)
+
+Description: Network profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    network_plugin      = optional(string, "azure")
+    network_policy      = optional(string, null)
+    network_plugin_mode = optional(string, null)
+    network_data_plane  = optional(string, null)
+    dns_service_ip      = optional(string, null)
+    service_cidr        = optional(string, null)
+    pod_cidr            = optional(string, null)
+    outbound_type       = optional(string, "loadBalancer")
+    load_balancer_sku   = optional(string, "standard")
+    load_balancer_profile = optional(object({
+      managed_outbound_ip_count   = optional(number, null)
+      managed_outbound_ipv6_count = optional(number, null)
+      outbound_ip_address_ids     = optional(list(string), null)
+      outbound_ip_prefix_ids      = optional(list(string), null)
+      outbound_ports_allocated    = optional(number, null)
+      idle_timeout_in_minutes     = optional(number, null)
+    }), null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_node_os_upgrade_channel"></a> [node\_os\_upgrade\_channel](#input\_node\_os\_upgrade\_channel)
+
+Description: Node OS upgrade channel for the AKS cluster. Possible values are NodeImage, None, SecurityPatch, or Unmanaged.
+
+Type: `string`
+
+Default: `"NodeImage"`
+
+### <a name="input_oidc_issuer_enabled"></a> [oidc\_issuer\_enabled](#input\_oidc\_issuer\_enabled)
+
+Description: Whether to enable OIDC issuer for the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_oms_agent"></a> [oms\_agent](#input\_oms\_agent)
+
+Description: OMS agent configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    log_analytics_workspace_id      = string
+    msi_auth_for_monitoring_enabled = optional(bool, true)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_private_cluster_enabled"></a> [private\_cluster\_enabled](#input\_private\_cluster\_enabled)
 
 Description: Whether to enable private cluster for the Azure Kubernetes Service.
@@ -173,19 +609,44 @@ Description: ID of the private DNS zone to be used for the private cluster.
 
 Type: `string`
 
-Default: `""`
+Default: `null`
+
+### <a name="input_role_based_access_control_enabled"></a> [role\_based\_access\_control\_enabled](#input\_role\_based\_access\_control\_enabled)
+
+Description: Whether to enable role-based access control for the AKS cluster.
+
+Type: `bool`
+
+Default: `true`
 
 ### <a name="input_sku_tier"></a> [sku\_tier](#input\_sku\_tier)
 
-Description: SKU tier for the Azure Kubernetes Service.
+Description: SKU tier for the Azure Kubernetes Service. Possible values are Free, Standard, or Premium.
 
 Type: `string`
 
 Default: `"Standard"`
 
+### <a name="input_storage_profile"></a> [storage\_profile](#input\_storage\_profile)
+
+Description: Storage profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    blob_driver_enabled         = optional(bool, false)
+    disk_driver_enabled         = optional(bool, true)
+    file_driver_enabled         = optional(bool, true)
+    snapshot_controller_enabled = optional(bool, true)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_tags"></a> [tags](#input\_tags)
 
-Description: Tags to be applied to the AI Service resources.
+Description: Tags to be applied to the AKS cluster resources.
 
 Type: `map(string)`
 
@@ -193,15 +654,74 @@ Default: `{}`
 
 ### <a name="input_user_assigned_identity_ids"></a> [user\_assigned\_identity\_ids](#input\_user\_assigned\_identity\_ids)
 
-Description: List of user assigned identity IDs for the Azure service plan.
+Description: List of user assigned identity IDs for the AKS cluster.
 
 Type: `list(string)`
 
 Default: `[]`
 
+### <a name="input_workload_autoscaler_profile"></a> [workload\_autoscaler\_profile](#input\_workload\_autoscaler\_profile)
+
+Description: Workload autoscaler profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    keda_enabled                    = optional(bool, false)
+    vertical_pod_autoscaler_enabled = optional(bool, false)
+  })
+```
+
+Default: `null`
+
+### <a name="input_workload_identity_enabled"></a> [workload\_identity\_enabled](#input\_workload\_identity\_enabled)
+
+Description: Whether to enable workload identity for the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
 ## Outputs
 
 The following outputs are exported:
+
+### <a name="output_current_kubernetes_version"></a> [current\_kubernetes\_version](#output\_current\_kubernetes\_version)
+
+Description: The current version of Kubernetes running on the cluster.
+
+### <a name="output_fqdn"></a> [fqdn](#output\_fqdn)
+
+Description: The FQDN of the Kubernetes cluster API server.
+
+### <a name="output_identity"></a> [identity](#output\_identity)
+
+Description: The identity block of the Kubernetes cluster.
+
+### <a name="output_identity_principal_id"></a> [identity\_principal\_id](#output\_identity\_principal\_id)
+
+Description: The principal ID of the system-assigned managed identity of the Kubernetes cluster.
+
+### <a name="output_kube_admin_config"></a> [kube\_admin\_config](#output\_kube\_admin\_config)
+
+Description: The admin kubeconfig block of the Kubernetes cluster. Only set when local\_account\_disabled = false.
+
+### <a name="output_kube_admin_config_raw"></a> [kube\_admin\_config\_raw](#output\_kube\_admin\_config\_raw)
+
+Description: The raw admin kubeconfig of the Kubernetes cluster in YAML format. Only set when local\_account\_disabled = false.
+
+### <a name="output_kube_config"></a> [kube\_config](#output\_kube\_config)
+
+Description: The kubeconfig block of the Kubernetes cluster.
+
+### <a name="output_kube_config_raw"></a> [kube\_config\_raw](#output\_kube\_config\_raw)
+
+Description: The raw kubeconfig of the Kubernetes cluster in YAML format.
+
+### <a name="output_kubelet_identity"></a> [kubelet\_identity](#output\_kubelet\_identity)
+
+Description: The kubelet identity block of the Kubernetes cluster. Used for ACR pull role assignments.
 
 ### <a name="output_kubernetes_cluster_id"></a> [kubernetes\_cluster\_id](#output\_kubernetes\_cluster\_id)
 
@@ -210,6 +730,26 @@ Description: The ID of the Kubernetes cluster.
 ### <a name="output_kubernetes_cluster_name"></a> [kubernetes\_cluster\_name](#output\_kubernetes\_cluster\_name)
 
 Description: The name of the Kubernetes cluster.
+
+### <a name="output_node_pool_ids"></a> [node\_pool\_ids](#output\_node\_pool\_ids)
+
+Description: Map of additional node pool names to their resource IDs.
+
+### <a name="output_node_resource_group"></a> [node\_resource\_group](#output\_node\_resource\_group)
+
+Description: The name of the Resource Group containing the Kubernetes cluster nodes.
+
+### <a name="output_node_resource_group_id"></a> [node\_resource\_group\_id](#output\_node\_resource\_group\_id)
+
+Description: The ID of the Resource Group containing the Kubernetes cluster nodes.
+
+### <a name="output_oidc_issuer_url"></a> [oidc\_issuer\_url](#output\_oidc\_issuer\_url)
+
+Description: The OIDC issuer URL of the Kubernetes cluster. Only set when oidc\_issuer\_enabled = true.
+
+### <a name="output_private_fqdn"></a> [private\_fqdn](#output\_private\_fqdn)
+
+Description: The private FQDN of the Kubernetes cluster API server. Only set when private\_cluster\_enabled = true.
 
 ## Resources
 
@@ -237,8 +777,17 @@ module "example" {
 The minimal usage for the module is as follows:
 
 ```hcl
-module "template" {
-    source = "../.."
+module "aks" {
+  source = "../.."
+
+  name                = "example-aks"
+  resource_group_name = "example-rg"
+
+  default_node_pool = {
+    name       = "system"
+    vm_size    = "Standard_D2s_v3"
+    node_count = 1
+  }
 }
 ```
 ## Contributing
