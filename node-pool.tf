@@ -46,6 +46,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "this" {
       drain_timeout_in_minutes      = upgrade_settings.value.drain_timeout_in_minutes
       node_soak_duration_in_minutes = upgrade_settings.value.node_soak_duration_in_minutes
       max_surge                     = upgrade_settings.value.max_surge
+      undrainable_node_behavior     = upgrade_settings.value.undrainable_node_behavior
     }
   }
 
@@ -68,9 +69,9 @@ resource "azurerm_kubernetes_cluster_node_pool" "this" {
   dynamic "linux_os_config" {
     for_each = each.value.linux_os_config != null ? [each.value.linux_os_config] : []
     content {
-      swap_file_size_mb             = linux_os_config.value.swap_file_size_mb
-      transparent_huge_page_enabled = linux_os_config.value.transparent_huge_page_enabled
-      transparent_huge_page_defrag  = linux_os_config.value.transparent_huge_page_defrag
+      swap_file_size_mb            = linux_os_config.value.swap_file_size_mb
+      transparent_huge_page        = linux_os_config.value.transparent_huge_page
+      transparent_huge_page_defrag = linux_os_config.value.transparent_huge_page_defrag
 
       dynamic "sysctl_config" {
         for_each = linux_os_config.value.sysctl_config != null ? [linux_os_config.value.sysctl_config] : []

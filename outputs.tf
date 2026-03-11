@@ -77,6 +77,16 @@ output "kube_admin_config_raw" {
   value       = azurerm_kubernetes_cluster.this.kube_admin_config_raw
 }
 
+output "portal_fqdn" {
+  description = "The FQDN for the Azure Portal resources when private link has been enabled, which is only resolvable inside the Virtual Network used by the Kubernetes Cluster."
+  value       = azurerm_kubernetes_cluster.this.portal_fqdn
+}
+
+output "http_application_routing_zone_name" {
+  description = "The Zone Name of the HTTP Application Routing. Only set when http_application_routing_enabled = true."
+  value       = azurerm_kubernetes_cluster.this.http_application_routing_zone_name
+}
+
 output "node_pool_ids" {
   description = "Map of additional node pool names to their resource IDs."
   value       = { for k, v in azurerm_kubernetes_cluster_node_pool.this : k => v.id }

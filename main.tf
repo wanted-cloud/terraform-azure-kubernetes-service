@@ -8,13 +8,16 @@ resource "azurerm_kubernetes_cluster" "this" {
   name                = var.name
   location            = coalesce(var.location, data.azurerm_resource_group.this.location)
   resource_group_name = data.azurerm_resource_group.this.name
-  dns_prefix          = coalesce(var.dns_prefix, "${var.name}-dns")
+  dns_prefix          = var.dns_prefix_private_cluster == null ? coalesce(var.dns_prefix, "${var.name}-dns") : null
+
+  dns_prefix_private_cluster = var.dns_prefix_private_cluster
 
   kubernetes_version        = var.kubernetes_version
   automatic_upgrade_channel = var.automatic_upgrade_channel
   node_os_upgrade_channel   = var.node_os_upgrade_channel
 
-  sku_tier = var.sku_tier
+  sku_tier     = var.sku_tier
+  support_plan = var.support_plan
 
   private_cluster_enabled             = var.private_cluster_enabled
   private_dns_zone_id                 = var.private_cluster_enabled ? var.private_dns_zone_id : null
@@ -25,6 +28,19 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   workload_identity_enabled = var.workload_identity_enabled
   oidc_issuer_enabled       = var.oidc_issuer_enabled
+
+  ai_toolchain_operator_enabled       = var.ai_toolchain_operator_enabled
+  azure_policy_enabled                = var.azure_policy_enabled
+  cost_analysis_enabled               = var.cost_analysis_enabled
+  custom_ca_trust_certificates_base64 = length(var.custom_ca_trust_certificates_base64) > 0 ? var.custom_ca_trust_certificates_base64 : null
+  disk_encryption_set_id              = var.disk_encryption_set_id
+  edge_zone                           = var.edge_zone
+  http_application_routing_enabled    = var.http_application_routing_enabled
+  image_cleaner_enabled               = var.image_cleaner_enabled
+  image_cleaner_interval_hours        = var.image_cleaner_interval_hours
+  node_resource_group                 = var.node_resource_group
+  open_service_mesh_enabled           = var.open_service_mesh_enabled
+  run_command_enabled                 = var.run_command_enabled
 
   tags = merge(local.metadata.tags, var.tags)
 
@@ -57,6 +73,19 @@ resource "azurerm_kubernetes_cluster" "this" {
 
     temporary_name_for_rotation = var.default_node_pool.temporary_name_for_rotation
 
+    capacity_reservation_group_id = var.default_node_pool.capacity_reservation_group_id
+    gpu_driver                    = var.default_node_pool.gpu_driver
+    gpu_instance                  = var.default_node_pool.gpu_instance
+    host_group_id                 = var.default_node_pool.host_group_id
+    host_encryption_enabled       = var.default_node_pool.host_encryption_enabled
+    fips_enabled                  = var.default_node_pool.fips_enabled
+    kubelet_disk_type             = var.default_node_pool.kubelet_disk_type
+    node_public_ip_prefix_id      = var.default_node_pool.node_public_ip_prefix_id
+    proximity_placement_group_id  = var.default_node_pool.proximity_placement_group_id
+    snapshot_id                   = var.default_node_pool.snapshot_id
+    ultra_ssd_enabled             = var.default_node_pool.ultra_ssd_enabled
+    workload_runtime              = var.default_node_pool.workload_runtime
+
     tags = merge(local.metadata.tags, var.default_node_pool.tags)
 
     dynamic "upgrade_settings" {
@@ -65,6 +94,7 @@ resource "azurerm_kubernetes_cluster" "this" {
         drain_timeout_in_minutes      = upgrade_settings.value.drain_timeout_in_minutes
         node_soak_duration_in_minutes = upgrade_settings.value.node_soak_duration_in_minutes
         max_surge                     = upgrade_settings.value.max_surge
+        undrainable_node_behavior     = upgrade_settings.value.undrainable_node_behavior
       }
     }
 
@@ -87,9 +117,9 @@ resource "azurerm_kubernetes_cluster" "this" {
     dynamic "linux_os_config" {
       for_each = var.default_node_pool.linux_os_config != null ? [var.default_node_pool.linux_os_config] : []
       content {
-        swap_file_size_mb             = linux_os_config.value.swap_file_size_mb
-        transparent_huge_page_enabled = linux_os_config.value.transparent_huge_page_enabled
-        transparent_huge_page_defrag  = linux_os_config.value.transparent_huge_page_defrag
+        swap_file_size_mb            = linux_os_config.value.swap_file_size_mb
+        transparent_huge_page        = linux_os_config.value.transparent_huge_page
+        transparent_huge_page_defrag = linux_os_config.value.transparent_huge_page_defrag
 
         dynamic "sysctl_config" {
           for_each = linux_os_config.value.sysctl_config != null ? [linux_os_config.value.sysctl_config] : []
@@ -127,11 +157,39 @@ resource "azurerm_kubernetes_cluster" "this" {
         }
       }
     }
+
+    dynamic "node_network_profile" {
+      for_each = var.default_node_pool.node_network_profile != null ? [var.default_node_pool.node_network_profile] : []
+      content {
+        application_security_group_ids = node_network_profile.value.application_security_group_ids
+        node_public_ip_tags            = node_network_profile.value.node_public_ip_tags
+
+        dynamic "allowed_host_ports" {
+          for_each = node_network_profile.value.allowed_host_ports
+          content {
+            port_start = allowed_host_ports.value.port_start
+            port_end   = allowed_host_ports.value.port_end
+            protocol   = allowed_host_ports.value.protocol
+          }
+        }
+      }
+    }
   }
 
-  identity {
-    type         = var.identity_type
-    identity_ids = length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids : null
+  dynamic "identity" {
+    for_each = var.service_principal == null ? [{ type = var.identity_type, identity_ids = var.user_assigned_identity_ids }] : []
+    content {
+      type         = identity.value.type
+      identity_ids = length(identity.value.identity_ids) > 0 ? identity.value.identity_ids : null
+    }
+  }
+
+  dynamic "service_principal" {
+    for_each = var.service_principal != null ? [var.service_principal] : []
+    content {
+      client_id     = service_principal.value.client_id
+      client_secret = service_principal.value.client_secret
+    }
   }
 
   dynamic "network_profile" {
@@ -141,9 +199,13 @@ resource "azurerm_kubernetes_cluster" "this" {
       network_policy      = network_profile.value.network_policy
       network_plugin_mode = network_profile.value.network_plugin_mode
       network_data_plane  = network_profile.value.network_data_plane
+      network_mode        = network_profile.value.network_mode
       dns_service_ip      = network_profile.value.dns_service_ip
       service_cidr        = network_profile.value.service_cidr
       pod_cidr            = network_profile.value.pod_cidr
+      pod_cidrs           = network_profile.value.pod_cidrs
+      service_cidrs       = network_profile.value.service_cidrs
+      ip_versions         = network_profile.value.ip_versions
       outbound_type       = network_profile.value.outbound_type
       load_balancer_sku   = network_profile.value.load_balancer_sku
 
@@ -156,6 +218,23 @@ resource "azurerm_kubernetes_cluster" "this" {
           outbound_ip_prefix_ids      = load_balancer_profile.value.outbound_ip_prefix_ids
           outbound_ports_allocated    = load_balancer_profile.value.outbound_ports_allocated
           idle_timeout_in_minutes     = load_balancer_profile.value.idle_timeout_in_minutes
+          backend_pool_type           = load_balancer_profile.value.backend_pool_type
+        }
+      }
+
+      dynamic "nat_gateway_profile" {
+        for_each = network_profile.value.nat_gateway_profile != null ? [network_profile.value.nat_gateway_profile] : []
+        content {
+          idle_timeout_in_minutes   = nat_gateway_profile.value.idle_timeout_in_minutes
+          managed_outbound_ip_count = nat_gateway_profile.value.managed_outbound_ip_count
+        }
+      }
+
+      dynamic "advanced_networking" {
+        for_each = network_profile.value.advanced_networking != null ? [network_profile.value.advanced_networking] : []
+        content {
+          observability_enabled = advanced_networking.value.observability_enabled
+          security_enabled      = advanced_networking.value.security_enabled
         }
       }
     }
@@ -205,23 +284,26 @@ resource "azurerm_kubernetes_cluster" "this" {
   dynamic "auto_scaler_profile" {
     for_each = var.auto_scaler_profile != null ? [var.auto_scaler_profile] : []
     content {
-      balance_similar_node_groups      = auto_scaler_profile.value.balance_similar_node_groups
-      expander                         = auto_scaler_profile.value.expander
-      max_graceful_termination_sec     = auto_scaler_profile.value.max_graceful_termination_sec
-      max_node_provisioning_time       = auto_scaler_profile.value.max_node_provisioning_time
-      max_unready_nodes                = auto_scaler_profile.value.max_unready_nodes
-      max_unready_percentage           = auto_scaler_profile.value.max_unready_percentage
-      new_pod_scale_up_delay           = auto_scaler_profile.value.new_pod_scale_up_delay
-      scale_down_delay_after_add       = auto_scaler_profile.value.scale_down_delay_after_add
-      scale_down_delay_after_delete    = auto_scaler_profile.value.scale_down_delay_after_delete
-      scale_down_delay_after_failure   = auto_scaler_profile.value.scale_down_delay_after_failure
-      scan_interval                    = auto_scaler_profile.value.scan_interval
-      scale_down_unneeded              = auto_scaler_profile.value.scale_down_unneeded
-      scale_down_unready               = auto_scaler_profile.value.scale_down_unready
-      scale_down_utilization_threshold = auto_scaler_profile.value.scale_down_utilization_threshold
-      empty_bulk_delete_max            = auto_scaler_profile.value.empty_bulk_delete_max
-      skip_nodes_with_local_storage    = auto_scaler_profile.value.skip_nodes_with_local_storage
-      skip_nodes_with_system_pods      = auto_scaler_profile.value.skip_nodes_with_system_pods
+      balance_similar_node_groups                   = auto_scaler_profile.value.balance_similar_node_groups
+      expander                                      = auto_scaler_profile.value.expander
+      max_graceful_termination_sec                  = auto_scaler_profile.value.max_graceful_termination_sec
+      max_node_provisioning_time                    = auto_scaler_profile.value.max_node_provisioning_time
+      max_unready_nodes                             = auto_scaler_profile.value.max_unready_nodes
+      max_unready_percentage                        = auto_scaler_profile.value.max_unready_percentage
+      new_pod_scale_up_delay                        = auto_scaler_profile.value.new_pod_scale_up_delay
+      scale_down_delay_after_add                    = auto_scaler_profile.value.scale_down_delay_after_add
+      scale_down_delay_after_delete                 = auto_scaler_profile.value.scale_down_delay_after_delete
+      scale_down_delay_after_failure                = auto_scaler_profile.value.scale_down_delay_after_failure
+      scan_interval                                 = auto_scaler_profile.value.scan_interval
+      scale_down_unneeded                           = auto_scaler_profile.value.scale_down_unneeded
+      scale_down_unready                            = auto_scaler_profile.value.scale_down_unready
+      scale_down_utilization_threshold              = auto_scaler_profile.value.scale_down_utilization_threshold
+      empty_bulk_delete_max                         = auto_scaler_profile.value.empty_bulk_delete_max
+      skip_nodes_with_local_storage                 = auto_scaler_profile.value.skip_nodes_with_local_storage
+      skip_nodes_with_system_pods                   = auto_scaler_profile.value.skip_nodes_with_system_pods
+      daemonset_eviction_for_empty_nodes_enabled    = auto_scaler_profile.value.daemonset_eviction_for_empty_nodes_enabled
+      daemonset_eviction_for_occupied_nodes_enabled = auto_scaler_profile.value.daemonset_eviction_for_occupied_nodes_enabled
+      ignore_daemonsets_utilization_enabled         = auto_scaler_profile.value.ignore_daemonsets_utilization_enabled
     }
   }
 
@@ -309,6 +391,23 @@ resource "azurerm_kubernetes_cluster" "this" {
     }
   }
 
+  dynamic "windows_profile" {
+    for_each = var.windows_profile != null ? [var.windows_profile] : []
+    content {
+      admin_username = windows_profile.value.admin_username
+      admin_password = windows_profile.value.admin_password
+      license        = windows_profile.value.license
+
+      dynamic "gmsa" {
+        for_each = windows_profile.value.gmsa != null ? [windows_profile.value.gmsa] : []
+        content {
+          dns_server  = gmsa.value.dns_server
+          root_domain = gmsa.value.root_domain
+        }
+      }
+    }
+  }
+
   dynamic "workload_autoscaler_profile" {
     for_each = var.workload_autoscaler_profile != null ? [var.workload_autoscaler_profile] : []
     content {
@@ -324,6 +423,108 @@ resource "azurerm_kubernetes_cluster" "this" {
       https_proxy = http_proxy_config.value.https_proxy
       no_proxy    = http_proxy_config.value.no_proxy
       trusted_ca  = http_proxy_config.value.trusted_ca
+    }
+  }
+
+  dynamic "aci_connector_linux" {
+    for_each = var.aci_connector_linux != null ? [var.aci_connector_linux] : []
+    content {
+      subnet_name = aci_connector_linux.value.subnet_name
+    }
+  }
+
+  dynamic "confidential_computing" {
+    for_each = var.confidential_computing != null ? [var.confidential_computing] : []
+    content {
+      sgx_quote_helper_enabled = confidential_computing.value.sgx_quote_helper_enabled
+    }
+  }
+
+  dynamic "ingress_application_gateway" {
+    for_each = var.ingress_application_gateway != null ? [var.ingress_application_gateway] : []
+    content {
+      gateway_id   = ingress_application_gateway.value.gateway_id
+      gateway_name = ingress_application_gateway.value.gateway_name
+      subnet_cidr  = ingress_application_gateway.value.subnet_cidr
+      subnet_id    = ingress_application_gateway.value.subnet_id
+    }
+  }
+
+  dynamic "key_management_service" {
+    for_each = var.key_management_service != null ? [var.key_management_service] : []
+    content {
+      key_vault_key_id         = key_management_service.value.key_vault_key_id
+      key_vault_network_access = key_management_service.value.key_vault_network_access
+    }
+  }
+
+  dynamic "kubelet_identity" {
+    for_each = var.kubelet_identity != null ? [var.kubelet_identity] : []
+    content {
+      client_id                 = kubelet_identity.value.client_id
+      object_id                 = kubelet_identity.value.object_id
+      user_assigned_identity_id = kubelet_identity.value.user_assigned_identity_id
+    }
+  }
+
+  dynamic "monitor_metrics" {
+    for_each = var.monitor_metrics != null ? [var.monitor_metrics] : []
+    content {
+      annotations_allowed = monitor_metrics.value.annotations_allowed
+      labels_allowed      = monitor_metrics.value.labels_allowed
+    }
+  }
+
+  dynamic "service_mesh_profile" {
+    for_each = var.service_mesh_profile != null ? [var.service_mesh_profile] : []
+    content {
+      mode                             = service_mesh_profile.value.mode
+      revisions                        = service_mesh_profile.value.revisions
+      internal_ingress_gateway_enabled = service_mesh_profile.value.internal_ingress_gateway_enabled
+      external_ingress_gateway_enabled = service_mesh_profile.value.external_ingress_gateway_enabled
+
+      dynamic "certificate_authority" {
+        for_each = service_mesh_profile.value.certificate_authority != null ? [service_mesh_profile.value.certificate_authority] : []
+        content {
+          key_vault_id           = certificate_authority.value.key_vault_id
+          root_cert_object_name  = certificate_authority.value.root_cert_object_name
+          cert_chain_object_name = certificate_authority.value.cert_chain_object_name
+          cert_object_name       = certificate_authority.value.cert_object_name
+          key_object_name        = certificate_authority.value.key_object_name
+        }
+      }
+    }
+  }
+
+  dynamic "upgrade_override" {
+    for_each = var.upgrade_override != null ? [var.upgrade_override] : []
+    content {
+      force_upgrade_enabled = upgrade_override.value.force_upgrade_enabled
+      effective_until       = upgrade_override.value.effective_until
+    }
+  }
+
+  dynamic "web_app_routing" {
+    for_each = var.web_app_routing != null ? [var.web_app_routing] : []
+    content {
+      dns_zone_ids             = web_app_routing.value.dns_zone_ids
+      default_nginx_controller = web_app_routing.value.default_nginx_controller
+    }
+  }
+
+  dynamic "bootstrap_profile" {
+    for_each = var.bootstrap_profile != null ? [var.bootstrap_profile] : []
+    content {
+      artifact_source       = bootstrap_profile.value.artifact_source
+      container_registry_id = bootstrap_profile.value.container_registry_id
+    }
+  }
+
+  dynamic "node_provisioning_profile" {
+    for_each = var.node_provisioning_profile != null ? [var.node_provisioning_profile] : []
+    content {
+      default_node_pools = node_provisioning_profile.value.default_node_pools
+      mode               = node_provisioning_profile.value.mode
     }
   }
 
