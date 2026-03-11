@@ -44,7 +44,7 @@ object({
     subnet_id = optional(string, null)
     tags      = optional(map(string), {})
     os_sku    = optional(string, "AzureLinux")
-    zones     = optional(list(number), [])
+    zones     = optional(list(string), [])
 
     // Auto-scaling flag
     auto_scaling_enabled = optional(bool, false)
@@ -65,10 +65,24 @@ object({
     node_public_ip_enabled       = optional(bool, null)
     temporary_name_for_rotation  = optional(string, null)
 
+    capacity_reservation_group_id = optional(string, null)
+    gpu_driver                    = optional(string, null)
+    gpu_instance                  = optional(string, null)
+    host_group_id                 = optional(string, null)
+    host_encryption_enabled       = optional(bool, null)
+    fips_enabled                  = optional(bool, null)
+    kubelet_disk_type             = optional(string, null)
+    node_public_ip_prefix_id      = optional(string, null)
+    proximity_placement_group_id  = optional(string, null)
+    snapshot_id                   = optional(string, null)
+    ultra_ssd_enabled             = optional(bool, null)
+    workload_runtime              = optional(string, null)
+
     upgrade_settings = optional(object({
       drain_timeout_in_minutes      = optional(number, null)
       node_soak_duration_in_minutes = optional(number, null)
       max_surge                     = optional(string, "10%")
+      undrainable_node_behavior     = optional(string, null)
     }), null)
 
     kubelet_config = optional(object({
@@ -79,15 +93,15 @@ object({
       image_gc_low_threshold    = optional(number, null)
       topology_manager_policy   = optional(string, null)
       allowed_unsafe_sysctls    = optional(list(string), null)
-      container_log_max_size_mb = optional(number, null)
+      container_log_max_size_mb = optional(string, null)
       container_log_max_line    = optional(number, null)
       pod_max_pid               = optional(number, null)
     }), null)
 
     linux_os_config = optional(object({
-      swap_file_size_mb             = optional(number, null)
-      transparent_huge_page_enabled = optional(string, null)
-      transparent_huge_page_defrag  = optional(string, null)
+      swap_file_size_mb            = optional(number, null)
+      transparent_huge_page        = optional(string, null)
+      transparent_huge_page_defrag = optional(string, null)
       sysctl_config = optional(object({
         fs_aio_max_nr                      = optional(number, null)
         fs_file_max                        = optional(number, null)
@@ -120,6 +134,16 @@ object({
         vm_vfs_cache_pressure              = optional(number, null)
       }), null)
     }), null)
+
+    node_network_profile = optional(object({
+      allowed_host_ports = optional(list(object({
+        port_start = optional(number, null)
+        port_end   = optional(number, null)
+        protocol   = optional(string, null)
+      })), [])
+      application_security_group_ids = optional(list(string), [])
+      node_public_ip_tags            = optional(map(string), {})
+    }), null)
   })
 ```
 
@@ -139,6 +163,20 @@ Type: `string`
 
 The following input variables are optional (have default values):
 
+### <a name="input_aci_connector_linux"></a> [aci\_connector\_linux](#input\_aci\_connector\_linux)
+
+Description: ACI connector Linux configuration for the AKS cluster (virtual nodes add-on).
+
+Type:
+
+```hcl
+object({
+    subnet_name = string
+  })
+```
+
+Default: `null`
+
 ### <a name="input_additional_node_pools"></a> [additional\_node\_pools](#input\_additional\_node\_pools)
 
 Description: List of additional node pools to be created.
@@ -154,7 +192,7 @@ list(object({
     os_type   = optional(string, "Linux")
     os_sku    = optional(string, "AzureLinux")
     priority  = optional(string, "Regular")
-    zones     = optional(list(number), [])
+    zones     = optional(list(string), [])
 
     // Auto-scaling flag
     auto_scaling_enabled = optional(bool, false)
@@ -184,6 +222,7 @@ list(object({
       drain_timeout_in_minutes      = optional(number, null)
       node_soak_duration_in_minutes = optional(number, null)
       max_surge                     = optional(string, "10%")
+      undrainable_node_behavior     = optional(string, null)
     }), null)
 
     kubelet_config = optional(object({
@@ -194,15 +233,15 @@ list(object({
       image_gc_low_threshold    = optional(number, null)
       topology_manager_policy   = optional(string, null)
       allowed_unsafe_sysctls    = optional(list(string), null)
-      container_log_max_size_mb = optional(number, null)
+      container_log_max_size_mb = optional(string, null)
       container_log_max_line    = optional(number, null)
       pod_max_pid               = optional(number, null)
     }), null)
 
     linux_os_config = optional(object({
-      swap_file_size_mb             = optional(number, null)
-      transparent_huge_page_enabled = optional(string, null)
-      transparent_huge_page_defrag  = optional(string, null)
+      swap_file_size_mb            = optional(number, null)
+      transparent_huge_page        = optional(string, null)
+      transparent_huge_page_defrag = optional(string, null)
       sysctl_config = optional(object({
         fs_aio_max_nr                      = optional(number, null)
         fs_file_max                        = optional(number, null)
@@ -254,6 +293,14 @@ list(object({
 
 Default: `[]`
 
+### <a name="input_ai_toolchain_operator_enabled"></a> [ai\_toolchain\_operator\_enabled](#input\_ai\_toolchain\_operator\_enabled)
+
+Description: Whether to enable the AI toolchain operator on the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_api_server_access_profile"></a> [api\_server\_access\_profile](#input\_api\_server\_access\_profile)
 
 Description: API server access profile configuration for the AKS cluster.
@@ -278,23 +325,26 @@ Type:
 
 ```hcl
 object({
-    balance_similar_node_groups      = optional(bool, false)
-    expander                         = optional(string, "random")
-    max_graceful_termination_sec     = optional(number, 600)
-    max_node_provisioning_time       = optional(string, "15m")
-    max_unready_nodes                = optional(number, 3)
-    max_unready_percentage           = optional(number, 45)
-    new_pod_scale_up_delay           = optional(string, "10s")
-    scale_down_delay_after_add       = optional(string, "10m")
-    scale_down_delay_after_delete    = optional(string, "10s")
-    scale_down_delay_after_failure   = optional(string, "3m")
-    scan_interval                    = optional(string, "10s")
-    scale_down_unneeded              = optional(string, "10m")
-    scale_down_unready               = optional(string, "20m")
-    scale_down_utilization_threshold = optional(number, 0.5)
-    empty_bulk_delete_max            = optional(number, 10)
-    skip_nodes_with_local_storage    = optional(bool, true)
-    skip_nodes_with_system_pods      = optional(bool, true)
+    balance_similar_node_groups                   = optional(bool, false)
+    expander                                      = optional(string, "random")
+    max_graceful_termination_sec                  = optional(number, 600)
+    max_node_provisioning_time                    = optional(string, "15m")
+    max_unready_nodes                             = optional(number, 3)
+    max_unready_percentage                        = optional(number, 45)
+    new_pod_scale_up_delay                        = optional(string, "10s")
+    scale_down_delay_after_add                    = optional(string, "10m")
+    scale_down_delay_after_delete                 = optional(string, "10s")
+    scale_down_delay_after_failure                = optional(string, "3m")
+    scan_interval                                 = optional(string, "10s")
+    scale_down_unneeded                           = optional(string, "10m")
+    scale_down_unready                            = optional(string, "20m")
+    scale_down_utilization_threshold              = optional(number, 0.5)
+    empty_bulk_delete_max                         = optional(number, 10)
+    skip_nodes_with_local_storage                 = optional(bool, true)
+    skip_nodes_with_system_pods                   = optional(bool, true)
+    daemonset_eviction_for_empty_nodes_enabled    = optional(bool, null)
+    daemonset_eviction_for_occupied_nodes_enabled = optional(bool, null)
+    ignore_daemonsets_utilization_enabled         = optional(bool, null)
   })
 ```
 
@@ -324,6 +374,67 @@ object({
 
 Default: `null`
 
+### <a name="input_azure_policy_enabled"></a> [azure\_policy\_enabled](#input\_azure\_policy\_enabled)
+
+Description: Whether to enable the Azure Policy add-on for the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_bootstrap_profile"></a> [bootstrap\_profile](#input\_bootstrap\_profile)
+
+Description: Bootstrap profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    artifact_source       = optional(string, null)
+    container_registry_id = optional(string, null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_confidential_computing"></a> [confidential\_computing](#input\_confidential\_computing)
+
+Description: Confidential computing configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    sgx_quote_helper_enabled = bool
+  })
+```
+
+Default: `null`
+
+### <a name="input_cost_analysis_enabled"></a> [cost\_analysis\_enabled](#input\_cost\_analysis\_enabled)
+
+Description: Whether to enable cost analysis for the AKS cluster. Requires sku\_tier to be Standard or Premium.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_custom_ca_trust_certificates_base64"></a> [custom\_ca\_trust\_certificates\_base64](#input\_custom\_ca\_trust\_certificates\_base64)
+
+Description: List of up to 10 base64-encoded CA certificates to be added to the trust store of nodes.
+
+Type: `list(string)`
+
+Default: `[]`
+
+### <a name="input_disk_encryption_set_id"></a> [disk\_encryption\_set\_id](#input\_disk\_encryption\_set\_id)
+
+Description: The ID of the Disk Encryption Set to use for encrypting the OS disk of nodes.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_dns_prefix"></a> [dns\_prefix](#input\_dns\_prefix)
 
 Description: DNS prefix for the Azure Kubernetes Service. If not set it will be derived from the cluster name.
@@ -331,6 +442,30 @@ Description: DNS prefix for the Azure Kubernetes Service. If not set it will be 
 Type: `string`
 
 Default: `null`
+
+### <a name="input_dns_prefix_private_cluster"></a> [dns\_prefix\_private\_cluster](#input\_dns\_prefix\_private\_cluster)
+
+Description: Specifies the DNS prefix to use with the private cluster FQDN. Changing this forces a new resource.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_edge_zone"></a> [edge\_zone](#input\_edge\_zone)
+
+Description: Specifies the extended availability zone in which the AKS cluster will be created.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_http_application_routing_enabled"></a> [http\_application\_routing\_enabled](#input\_http\_application\_routing\_enabled)
+
+Description: Whether HTTP Application Routing is enabled.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_http_proxy_config"></a> [http\_proxy\_config](#input\_http\_proxy\_config)
 
@@ -357,6 +492,54 @@ Type: `string`
 
 Default: `"SystemAssigned"`
 
+### <a name="input_image_cleaner_enabled"></a> [image\_cleaner\_enabled](#input\_image\_cleaner\_enabled)
+
+Description: Whether to enable the Image Cleaner on the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_image_cleaner_interval_hours"></a> [image\_cleaner\_interval\_hours](#input\_image\_cleaner\_interval\_hours)
+
+Description: Specifies the interval in hours when images should be cleaned up. Ranges from 24 to 2160.
+
+Type: `number`
+
+Default: `null`
+
+### <a name="input_ingress_application_gateway"></a> [ingress\_application\_gateway](#input\_ingress\_application\_gateway)
+
+Description: Ingress Application Gateway add-on configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    gateway_id   = optional(string, null)
+    gateway_name = optional(string, null)
+    subnet_cidr  = optional(string, null)
+    subnet_id    = optional(string, null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_key_management_service"></a> [key\_management\_service](#input\_key\_management\_service)
+
+Description: Key Management Service (Azure KMS etcd encryption) configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    key_vault_key_id         = string
+    key_vault_network_access = optional(string, null)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_key_vault_secrets_provider"></a> [key\_vault\_secrets\_provider](#input\_key\_vault\_secrets\_provider)
 
 Description: Key Vault secrets provider configuration for the AKS cluster.
@@ -367,6 +550,22 @@ Type:
 object({
     secret_rotation_enabled  = optional(bool, false)
     secret_rotation_interval = optional(string, "2m")
+  })
+```
+
+Default: `null`
+
+### <a name="input_kubelet_identity"></a> [kubelet\_identity](#input\_kubelet\_identity)
+
+Description: User-assigned identity for the kubelet to authenticate to Azure resources.
+
+Type:
+
+```hcl
+object({
+    client_id                 = optional(string, null)
+    object_id                 = optional(string, null)
+    user_assigned_identity_id = optional(string, null)
   })
 ```
 
@@ -526,6 +725,21 @@ object({
 
 Default: `null`
 
+### <a name="input_monitor_metrics"></a> [monitor\_metrics](#input\_monitor\_metrics)
+
+Description: Metrics configuration for the Azure Monitor managed Prometheus add-on.
+
+Type:
+
+```hcl
+object({
+    annotations_allowed = optional(string, null)
+    labels_allowed      = optional(string, null)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_network_profile"></a> [network\_profile](#input\_network\_profile)
 
 Description: Network profile configuration for the AKS cluster.
@@ -538,9 +752,13 @@ object({
     network_policy      = optional(string, null)
     network_plugin_mode = optional(string, null)
     network_data_plane  = optional(string, null)
+    network_mode        = optional(string, null)
     dns_service_ip      = optional(string, null)
     service_cidr        = optional(string, null)
     pod_cidr            = optional(string, null)
+    pod_cidrs           = optional(list(string), null)
+    service_cidrs       = optional(list(string), null)
+    ip_versions         = optional(list(string), null)
     outbound_type       = optional(string, "loadBalancer")
     load_balancer_sku   = optional(string, "standard")
     load_balancer_profile = optional(object({
@@ -550,6 +768,15 @@ object({
       outbound_ip_prefix_ids      = optional(list(string), null)
       outbound_ports_allocated    = optional(number, null)
       idle_timeout_in_minutes     = optional(number, null)
+      backend_pool_type           = optional(string, null)
+    }), null)
+    nat_gateway_profile = optional(object({
+      idle_timeout_in_minutes   = optional(number, null)
+      managed_outbound_ip_count = optional(number, null)
+    }), null)
+    advanced_networking = optional(object({
+      observability_enabled = optional(bool, null)
+      security_enabled      = optional(bool, null)
     }), null)
   })
 ```
@@ -563,6 +790,29 @@ Description: Node OS upgrade channel for the AKS cluster. Possible values are No
 Type: `string`
 
 Default: `"NodeImage"`
+
+### <a name="input_node_provisioning_profile"></a> [node\_provisioning\_profile](#input\_node\_provisioning\_profile)
+
+Description: Node provisioning profile configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    default_node_pools = optional(string, null)
+    mode               = optional(string, null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_node_resource_group"></a> [node\_resource\_group](#input\_node\_resource\_group)
+
+Description: The name of the Resource Group where the Kubernetes Nodes should exist.
+
+Type: `string`
+
+Default: `null`
 
 ### <a name="input_oidc_issuer_enabled"></a> [oidc\_issuer\_enabled](#input\_oidc\_issuer\_enabled)
 
@@ -586,6 +836,14 @@ object({
 ```
 
 Default: `null`
+
+### <a name="input_open_service_mesh_enabled"></a> [open\_service\_mesh\_enabled](#input\_open\_service\_mesh\_enabled)
+
+Description: Whether to enable Open Service Mesh on the AKS cluster.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_private_cluster_enabled"></a> [private\_cluster\_enabled](#input\_private\_cluster\_enabled)
 
@@ -619,6 +877,53 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_run_command_enabled"></a> [run\_command\_enabled](#input\_run\_command\_enabled)
+
+Description: Whether to enable the Run Command feature for the AKS cluster.
+
+Type: `bool`
+
+Default: `true`
+
+### <a name="input_service_mesh_profile"></a> [service\_mesh\_profile](#input\_service\_mesh\_profile)
+
+Description: Service mesh profile configuration for the AKS cluster (Istio-based service mesh).
+
+Type:
+
+```hcl
+object({
+    mode                             = string
+    revisions                        = list(string)
+    internal_ingress_gateway_enabled = optional(bool, null)
+    external_ingress_gateway_enabled = optional(bool, null)
+    certificate_authority = optional(object({
+      key_vault_id           = string
+      root_cert_object_name  = string
+      cert_chain_object_name = string
+      cert_object_name       = string
+      key_object_name        = string
+    }), null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_service_principal"></a> [service\_principal](#input\_service\_principal)
+
+Description: Service principal configuration for the AKS cluster. Mutually exclusive with the identity block.
+
+Type:
+
+```hcl
+object({
+    client_id     = string
+    client_secret = string
+  })
+```
+
+Default: `null`
+
 ### <a name="input_sku_tier"></a> [sku\_tier](#input\_sku\_tier)
 
 Description: SKU tier for the Azure Kubernetes Service. Possible values are Free, Standard, or Premium.
@@ -644,6 +949,14 @@ object({
 
 Default: `null`
 
+### <a name="input_support_plan"></a> [support\_plan](#input\_support\_plan)
+
+Description: Specifies the support plan which should be used for this Kubernetes Cluster. Possible values are KubernetesOfficial or AKSLongTermSupport.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_tags"></a> [tags](#input\_tags)
 
 Description: Tags to be applied to the AKS cluster resources.
@@ -652,6 +965,21 @@ Type: `map(string)`
 
 Default: `{}`
 
+### <a name="input_upgrade_override"></a> [upgrade\_override](#input\_upgrade\_override)
+
+Description: Upgrade override configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    force_upgrade_enabled = bool
+    effective_until       = optional(string, null)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_user_assigned_identity_ids"></a> [user\_assigned\_identity\_ids](#input\_user\_assigned\_identity\_ids)
 
 Description: List of user assigned identity IDs for the AKS cluster.
@@ -659,6 +987,41 @@ Description: List of user assigned identity IDs for the AKS cluster.
 Type: `list(string)`
 
 Default: `[]`
+
+### <a name="input_web_app_routing"></a> [web\_app\_routing](#input\_web\_app\_routing)
+
+Description: Web Application Routing add-on configuration for the AKS cluster.
+
+Type:
+
+```hcl
+object({
+    dns_zone_ids             = list(string)
+    default_nginx_controller = optional(string, null)
+  })
+```
+
+Default: `null`
+
+### <a name="input_windows_profile"></a> [windows\_profile](#input\_windows\_profile)
+
+Description: Windows profile configuration for the AKS cluster (cluster-level).
+
+Type:
+
+```hcl
+object({
+    admin_username = string
+    admin_password = string
+    license        = optional(string, null)
+    gmsa = optional(object({
+      dns_server  = string
+      root_domain = string
+    }), null)
+  })
+```
+
+Default: `null`
 
 ### <a name="input_workload_autoscaler_profile"></a> [workload\_autoscaler\_profile](#input\_workload\_autoscaler\_profile)
 
@@ -694,6 +1057,10 @@ Description: The current version of Kubernetes running on the cluster.
 ### <a name="output_fqdn"></a> [fqdn](#output\_fqdn)
 
 Description: The FQDN of the Kubernetes cluster API server.
+
+### <a name="output_http_application_routing_zone_name"></a> [http\_application\_routing\_zone\_name](#output\_http\_application\_routing\_zone\_name)
+
+Description: The Zone Name of the HTTP Application Routing. Only set when http\_application\_routing\_enabled = true.
 
 ### <a name="output_identity"></a> [identity](#output\_identity)
 
@@ -746,6 +1113,10 @@ Description: The ID of the Resource Group containing the Kubernetes cluster node
 ### <a name="output_oidc_issuer_url"></a> [oidc\_issuer\_url](#output\_oidc\_issuer\_url)
 
 Description: The OIDC issuer URL of the Kubernetes cluster. Only set when oidc\_issuer\_enabled = true.
+
+### <a name="output_portal_fqdn"></a> [portal\_fqdn](#output\_portal\_fqdn)
+
+Description: The FQDN for the Azure Portal resources when private link has been enabled, which is only resolvable inside the Virtual Network used by the Kubernetes Cluster.
 
 ### <a name="output_private_fqdn"></a> [private\_fqdn](#output\_private\_fqdn)
 
