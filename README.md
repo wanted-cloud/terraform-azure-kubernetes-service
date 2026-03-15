@@ -1070,6 +1070,14 @@ Description: The identity block of the Kubernetes cluster.
 
 Description: The principal ID of the system-assigned managed identity of the Kubernetes cluster.
 
+### <a name="output_key_vault_secrets_provider_identity_client_id"></a> [key\_vault\_secrets\_provider\_identity\_client\_id](#output\_key\_vault\_secrets\_provider\_identity\_client\_id)
+
+Description: The client ID of the Key Vault Secrets Provider addon identity.
+
+### <a name="output_key_vault_secrets_provider_identity_object_id"></a> [key\_vault\_secrets\_provider\_identity\_object\_id](#output\_key\_vault\_secrets\_provider\_identity\_object\_id)
+
+Description: The object ID of the Key Vault Secrets Provider addon identity.
+
 ### <a name="output_kube_admin_config"></a> [kube\_admin\_config](#output\_kube\_admin\_config)
 
 Description: The admin kubeconfig block of the Kubernetes cluster. Only set when local\_account\_disabled = false.

@@ -91,3 +91,13 @@ output "node_pool_ids" {
   description = "Map of additional node pool names to their resource IDs."
   value       = { for k, v in azurerm_kubernetes_cluster_node_pool.this : k => v.id }
 }
+
+output "key_vault_secrets_provider_identity_client_id" {
+  description = "The client ID of the Key Vault Secrets Provider addon identity."
+  value       = try(azurerm_kubernetes_cluster.this.key_vault_secrets_provider[0].secret_identity[0].client_id, null)
+}
+
+output "key_vault_secrets_provider_identity_object_id" {
+  description = "The object ID of the Key Vault Secrets Provider addon identity."
+  value       = try(azurerm_kubernetes_cluster.this.key_vault_secrets_provider[0].secret_identity[0].object_id, null)
+}
