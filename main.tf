@@ -8,7 +8,13 @@ resource "azurerm_kubernetes_cluster" "this" {
   name                = var.name
   location            = coalesce(var.location, data.azurerm_resource_group.this.location)
   resource_group_name = data.azurerm_resource_group.this.name
-  dns_prefix          = var.dns_prefix_private_cluster == null ? coalesce(var.dns_prefix, "${var.name}-dns") : null
+
+  # azurerm 5.0 requires a node_provisioning_profile. "Manual" preserves the
+  # traditional node-pool behaviour (as opposed to node auto-provisioning).
+  node_provisioning_profile {
+    mode = var.node_provisioning_mode
+  }
+  dns_prefix = var.dns_prefix_private_cluster == null ? coalesce(var.dns_prefix, "${var.name}-dns") : null
 
   dns_prefix_private_cluster = var.dns_prefix_private_cluster
 

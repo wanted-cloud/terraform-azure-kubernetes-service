@@ -784,3 +784,13 @@ variable "node_provisioning_profile" {
   })
   default = null
 }
+
+variable "node_provisioning_mode" {
+  description = "AKS node provisioning mode (azurerm 5.0). \"Manual\" = traditional node pools; \"Auto\" = node auto-provisioning."
+  type        = string
+  default     = "Manual"
+  validation {
+    condition     = contains(["Manual", "Auto"], var.node_provisioning_mode)
+    error_message = "node_provisioning_mode must be \"Manual\" or \"Auto\"."
+  }
+}
