@@ -61,7 +61,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "this" {
       topology_manager_policy   = kubelet_config.value.topology_manager_policy
       allowed_unsafe_sysctls    = kubelet_config.value.allowed_unsafe_sysctls
       container_log_max_size_mb = kubelet_config.value.container_log_max_size_mb
-      container_log_max_line    = kubelet_config.value.container_log_max_line
+      container_log_max_files   = kubelet_config.value.container_log_max_files
       pod_max_pid               = kubelet_config.value.pod_max_pid
     }
   }

@@ -94,7 +94,7 @@ object({
       topology_manager_policy   = optional(string, null)
       allowed_unsafe_sysctls    = optional(list(string), null)
       container_log_max_size_mb = optional(string, null)
-      container_log_max_line    = optional(number, null)
+      container_log_max_files    = optional(number, null)
       pod_max_pid               = optional(number, null)
     }), null)
 
@@ -234,7 +234,7 @@ list(object({
       topology_manager_policy   = optional(string, null)
       allowed_unsafe_sysctls    = optional(list(string), null)
       container_log_max_size_mb = optional(string, null)
-      container_log_max_line    = optional(number, null)
+      container_log_max_files    = optional(number, null)
       pod_max_pid               = optional(number, null)
     }), null)
 
