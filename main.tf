@@ -503,15 +503,12 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 
   dynamic "upgrade_override" {
-    # Emit ONLY when the override is meaningful — a forced upgrade OR an explicit
-    # effective_until. A fully-inert override (force_upgrade_enabled=false, no
-    # effective_until) must NOT be sent: on a CREATE the provider serializes an empty
-    # `until`, which Azure rejects with 400 "cannot parse '' as time". Omitting it is a
-    # no-op for a cluster with no override and lets a greenfield cluster create.
-    for_each = (
-      var.upgrade_override != null &&
-      (var.upgrade_override.force_upgrade_enabled || var.upgrade_override.effective_until != null)
-    ) ? [var.upgrade_override] : []
+    # Unopinionated pass-through: emit exactly what the caller declares. upgrade_override
+    # is cluster-specific state, not shared policy — a caller with an existing override
+    # (which azurerm forbids UNSETTING) declares it; a greenfield cluster simply passes
+    # null (do not pass an inert force_upgrade_enabled=false with no effective_until on a
+    # CREATE — the provider serialises an empty `until` and Azure 400s).
+    for_each = var.upgrade_override != null ? [var.upgrade_override] : []
     content {
       force_upgrade_enabled = upgrade_override.value.force_upgrade_enabled
       effective_until       = upgrade_override.value.effective_until
